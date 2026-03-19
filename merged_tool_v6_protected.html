@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>葡村Olá 公众号排版工具</title>
+    <style>
+        /* 锁屏 */
+        #lockScreen{position:fixed;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;align-items:center;justify-content:center;z-index:9999;}
+        #lockBox{background:white;border-radius:16px;padding:40px 36px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;width:320px;}
+        #lockBox .li{font-size:48px;margin-bottom:12px;}
+        #lockBox h2{font-size:20px;color:#333;margin-bottom:6px;font-family:"PingFang SC",sans-serif;}
+        #lockBox p{font-size:13px;color:#999;margin-bottom:24px;font-family:"PingFang SC",sans-serif;}
+        #lockBox input{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:8px;font-size:22px;text-align:center;letter-spacing:6px;outline:none;margin-bottom:16px;box-sizing:border-box;font-family:monospace;}
+        #lockBox input:focus{border-color:#667eea;}
+        #lockBox button{width:100%;padding:13px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-family:"PingFang SC",sans-serif;}
+        #lockBox button:active{opacity:.85;}
+        #lockErr{color:#ff5252;font-size:13px;margin-top:12px;min-height:18px;}
+        #mainApp{display:none;}
+
+        /* 原版样式 */
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;}
+        .container{max-width:1600px;margin:0 auto;display:grid;grid-template-columns:320px 1fr 1fr;grid-template-rows:auto auto;gap:20px;}
+        .panel{background:white;border-radius:12px;padding:25px;box-shadow:0 10px 40px rgba(0,0,0,.15);}
+        .panel-title{font-size:18px;font-weight:bold;color:#667eea;margin-bottom:15px;display:flex;align-items:center;gap:8px;}
+        .format-panel{grid-row:1/3;max-height:calc(100vh - 40px);overflow-y:auto;}
+        .format-section{margin-bottom:15px;padding-bottom:12px;border-bottom:1px solid #e0e0e0;}
+        .format-section:last-child{border-bottom:none;}
+        .format-section h4{font-size:13px;color:#667eea;margin-bottom:10px;font-weight:600;}
+        .format-item{margin-bottom:8px;}
+        .format-item label{display:block;font-size:11px;color:#666;margin-bottom:4px;}
+        .format-item input[type="number"],.format-item input[type="text"],.format-item input[type="color"]{width:100%;padding:6px;border:1px solid #ddd;border-radius:5px;font-size:12px;}
+        .format-item input[type="color"]{height:32px;cursor:pointer;}
+        .format-item .input-group{display:flex;gap:6px;align-items:center;}
+        .format-item .input-group input{flex:1;}
+        .format-item .unit{font-size:11px;color:#999;min-width:25px;}
+        .input-section{margin-bottom:12px;}
+        .input-section label{display:block;font-size:13px;color:#666;margin-bottom:5px;font-weight:500;}
+        .input-section input,.input-section textarea{width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:6px;font-size:14px;font-family:inherit;}
+        .input-section textarea{min-height:120px;resize:vertical;}
+        .input-section textarea.comment-textarea{min-height:100px;}
+        .button-group{display:flex;gap:8px;margin-top:12px;}
+        .btn{flex:1;padding:10px 16px;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .3s;}
+        .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;}
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(102,126,234,.4);}
+        .btn-secondary{background:#f0f0f0;color:#666;}
+        .btn-success{background:linear-gradient(135deg,#11998e 0%,#38ef7d 100%);color:white;}
+        .btn-success:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(17,153,142,.4);}
+        .btn-info{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:white;}
+        .btn-info:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(79,172,254,.4);}
+        .btn-small{padding:8px 14px;font-size:12px;}
+        .preview-box{background:white;padding:20px;border:1px solid #e0e0e0;border-radius:8px;min-height:200px;max-height:300px;overflow-y:auto;}
+        .hint{background:#fff3cd;border-left:4px solid #ffc107;padding:8px 10px;margin:10px 0;font-size:11px;color:#856404;border-radius:4px;}
+        .copy-toast{position:fixed;top:20px;right:20px;background:#4caf50;color:white;padding:15px 25px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transform:translateY(-20px);transition:all .3s;z-index:1000;}
+        .copy-toast.show{opacity:1;transform:translateY(0);}
+        select{width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;}
+        .source-chip{display:inline-block;padding:5px 12px;border-radius:20px;border:1px solid #667eea;background:#f0f2ff;color:#667eea;font-size:12px;cursor:pointer;transition:all .2s;font-family:inherit;}
+        .source-chip:hover{background:#667eea;color:#fff;}
+        .copy-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+        .comment-type-selector{margin-bottom:12px;}
+        .comment-type-selector label{display:block;font-size:13px;color:#666;margin-bottom:5px;font-weight:500;}
+        .comment-type-selector select{width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:6px;font-size:14px;background:white;cursor:pointer;}
+        .comment-type-selector select:focus{border-color:#667eea;outline:none;}
+        .type-preview{display:inline-block;padding:4px 12px;border-radius:4px;font-size:12px;margin-top:8px;font-weight:500;}
+        .type-observation{background:#FFF9DB;color:#FF9800;border-left:3px solid #FF9800;}
+        .type-reminder{background:#FFE8E8;color:#FF5252;border-left:3px solid #FF5252;}
+        .type-tips{background:#E8F4FD;color:#2196F3;border-left:3px solid #2196F3;}
+        .type-data{background:#F5F5F5;color:#757575;border-left:3px solid #757575;}
+        .type-resource{background:#F3E5F5;color:#9C27B0;border-left:3px solid #9C27B0;}
+        .type-link{background:#E8F5E9;color:#4CAF50;border-left:3px solid #4CAF50;}
+        @media(max-width:1200px){.container{grid-template-columns:280px 1fr 1fr;}}
+        @media(max-width:900px){.container{grid-template-columns:1fr;grid-template-rows:auto;}.format-panel{grid-row:auto;max-height:none;}}
+        .recommendation-section{max-width:1600px;margin:20px auto 0;background:white;border-radius:12px;padding:25px;box-shadow:0 10px 40px rgba(0,0,0,.15);}
+        .rec-title{font-size:18px;font-weight:bold;color:#667eea;margin-bottom:15px;display:flex;align-items:center;gap:8px;}
+        .rec-content{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+        .rec-input-area{display:flex;flex-direction:column;gap:15px;}
+        .rec-input-area label{font-size:13px;color:#666;font-weight:500;}
+        .rec-input-area select,.rec-input-area textarea{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;}
+        .rec-input-area textarea{min-height:150px;resize:vertical;line-height:1.6;}
+        .rec-input-area select:focus,.rec-input-area textarea:focus{border-color:#667eea;outline:none;}
+        .rec-buttons{display:flex;gap:10px;}
+        .rec-preview-area{background:#f8f9fa;padding:20px;border-radius:8px;border:2px solid #e0e0e0;}
+        .rec-preview-title{font-size:14px;font-weight:600;color:#333;margin-bottom:15px;}
+        .rec-preview-box{background:white;padding:20px;border-radius:8px;min-height:200px;}
+        @media(max-width:900px){.rec-content{grid-template-columns:1fr;}}
+    </style>
+</head>
+<body>
+
+<div id="lockScreen">
+    <div id="lockBox">
+        <div class="li">🔐</div>
+        <h2>小小工具面板</h2>
+        <p>请输入访问密码</p>
+        <input type="password" id="pwdInput" placeholder="••••••" maxlength="20"
+               onkeydown="if(event.key==='Enter')checkPassword()">
+        <button onclick="checkPassword()">进入工具 →</button>
+        <div id="lockErr"></div>
+    </div>
+</div>
+
+<div id="mainApp">
+
+<div class="container">
+    <div class="panel format-panel">
+        <div class="panel-title">⚙️ 格式参数</div>
+        <div class="format-section"><h4>标题格式</h4>
+            <div class="format-item"><label>字号 (px)</label><div class="input-group"><input type="number" id="titleSize" value="20" min="12" max="32" onchange="updateCurrentValues()"><span class="unit">px</span></div></div>
+            <div class="format-item"><label>颜色</label><input type="color" id="titleColor" value="#000000" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>行高</label><div class="input-group"><input type="number" id="titleLineHeight" value="1.6" min="1" max="3" step="0.1" onchange="updateCurrentValues()"></div></div>
+            <div class="format-item"><label>字间距 (px)</label><div class="input-group"><input type="number" id="titleLetterSpacing" value="1" min="0" max="5" step="0.5" onchange="updateCurrentValues()"><span class="unit">px</span></div></div>
+        </div>
+        <div class="format-section"><h4>正文格式</h4>
+            <div class="format-item"><label>字号 (px)</label><div class="input-group"><input type="number" id="bodySize" value="16" min="12" max="24" onchange="updateCurrentValues()"><span class="unit">px</span></div></div>
+            <div class="format-item"><label>颜色</label><input type="color" id="bodyColor" value="#333333" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>对齐方式</label><select id="bodyAlign" onchange="updateCurrentValues()"><option value="left">左对齐</option><option value="justify" selected>两端对齐</option><option value="center">居中</option></select></div>
+            <div class="format-item"><label>行高</label><div class="input-group"><input type="number" id="bodyLineHeight" value="1.8" min="1" max="3" step="0.1" onchange="updateCurrentValues()"></div></div>
+            <div class="format-item"><label>字间距 (px)</label><div class="input-group"><input type="number" id="bodyLetterSpacing" value="1" min="0" max="5" step="0.5" onchange="updateCurrentValues()"><span class="unit">px</span></div></div>
+            <div class="format-item"><label>段落间距 (px)</label><div class="input-group"><input type="number" id="paragraphSpacing" value="15" min="5" max="30" onchange="updateCurrentValues()"><span class="unit">px</span></div></div>
+        </div>
+        <div class="format-section"><h4>🔍 Olá观察</h4>
+            <div class="format-item"><label>内容字号</label><input type="number" id="obsContentSize" value="15" min="12" max="20" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>背景色</label><input type="color" id="obsColor" value="#FFF9DB" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>边框色</label><input type="color" id="obsBorder" value="#FF9800" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>标题颜色</label><input type="color" id="obsTitleColor" value="#FF9800" onchange="updateCurrentValues()"></div>
+        </div>
+        <div class="format-section"><h4>❗ Olá提醒</h4>
+            <div class="format-item"><label>内容字号</label><input type="number" id="remContentSize" value="15" min="12" max="20" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>背景色</label><input type="color" id="remColor" value="#FFE8E8" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>边框色</label><input type="color" id="remBorder" value="#FF5252" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>标题颜色</label><input type="color" id="remTitleColor" value="#FF5252" onchange="updateCurrentValues()"></div>
+        </div>
+        <div class="format-section"><h4>📝 Olá小贴士</h4>
+            <div class="format-item"><label>内容字号</label><input type="number" id="tipsContentSize" value="15" min="12" max="20" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>背景色</label><input type="color" id="tipsColor" value="#E8F4FD" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>边框色</label><input type="color" id="tipsBorder" value="#2196F3" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>标题颜色</label><input type="color" id="tipsTitleColor" value="#2196F3" onchange="updateCurrentValues()"></div>
+        </div>
+        <div class="format-section"><h4>📊 Olá数据</h4>
+            <div class="format-item"><label>内容字号</label><input type="number" id="dataContentSize" value="15" min="12" max="20" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>背景色</label><input type="color" id="dataColor" value="#F5F5F5" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>边框色</label><input type="color" id="dataBorder" value="#757575" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>标题颜色</label><input type="color" id="dataTitleColor" value="#757575" onchange="updateCurrentValues()"></div>
+        </div>
+        <div class="format-section"><h4>🔗 Olá资源</h4>
+            <div class="format-item"><label>内容字号</label><input type="number" id="resourceContentSize" value="15" min="12" max="20" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>背景色</label><input type="color" id="resourceColor" value="#F3E5F5" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>边框色</label><input type="color" id="resourceBorder" value="#9C27B0" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>标题颜色</label><input type="color" id="resourceTitleColor" value="#9C27B0" onchange="updateCurrentValues()"></div>
+        </div>
+        <div class="format-section"><h4>🌐 Olá链接</h4>
+            <div class="format-item"><label>内容字号</label><input type="number" id="linkContentSize" value="15" min="12" max="20" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>背景色</label><input type="color" id="linkColor" value="#E8F5E9" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>边框色</label><input type="color" id="linkBorder" value="#4CAF50" onchange="updateCurrentValues()"></div>
+            <div class="format-item"><label>标题颜色</label><input type="color" id="linkTitleColor" value="#4CAF50" onchange="updateCurrentValues()"></div>
+        </div>
+        <div class="button-group"><button class="btn btn-secondary btn-small" onclick="resetFormat()">恢复默认</button></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">✍️ 正文输入</div>
+        <div class="input-section"><label>🔗 原文网址</label><input type="text" id="title" placeholder="粘贴原文链接（用于生成免责声明）"></div>
+        <div class="input-section"><label>📄 正文内容</label><textarea id="content" placeholder="输入正文内容..."></textarea></div>
+        <div class="input-section">
+            <label>📡 新闻来源（点击即复制名称）</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <button class="source-chip" onclick="copySourceName(this,'Notícias ao Minuto')">Notícias ao Minuto</button>
+                <button class="source-chip" onclick="copySourceName(this,'SAPO')">SAPO</button>
+                <button class="source-chip" onclick="copySourceName(this,'Público')">Público</button>
+                <button class="source-chip" onclick="copySourceName(this,'Diário de Notícias')">DN</button>
+            </div>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="generateBodyPreview()">🎨 生成预览</button>
+            <button class="btn btn-secondary" onclick="clearBody()">🗑️ 清空</button>
+        </div>
+        <div class="copy-buttons"><button class="btn btn-info btn-small" onclick="copyBody()">📋 复制正文</button></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">💬 Olá评论</div>
+        <div class="comment-type-selector">
+            <label>📑 评论类型</label>
+            <select id="commentType" onchange="updateTypePreview();generateCommentPreview();">
+                <option value="observation">🔍 Olá观察</option>
+                <option value="reminder">❗ Olá提醒</option>
+                <option value="tips">📝 Olá小贴士</option>
+                <option value="data">📊 Olá数据</option>
+                <option value="resource">🔗 Olá资源</option>
+                <option value="link">🌐 Olá链接</option>
+            </select>
+            <div id="typePreview" class="type-preview type-observation">🔍 Olá观察</div>
+        </div>
+        <div class="input-section"><label>📝 评论内容</label><textarea id="commentContent" class="comment-textarea" placeholder="直接输入评论内容...（**文字** 可加粗）"></textarea></div>
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="generateCommentPreview()">🎨 生成预览</button>
+            <button class="btn btn-success" onclick="copyComments()">📋 复制评论</button>
+        </div>
+        <div class="button-group" style="margin-top:8px;"><button class="btn btn-secondary" onclick="clearComments()">🗑️ 清空评论</button></div>
+        <div class="hint" style="background:#e8f4fd;border-color:#2196F3;color:#1565c0;">📌 <strong>复制评论：</strong>仅复制Olá评论框</div>
+    </div>
+
+    <div class="panel"><div class="panel-title">👀 正文预览</div><div id="bodyPreview" class="preview-box"><p style="color:#999;text-align:center;padding:40px 20px;">👆 输入正文后点击"生成预览"</p></div></div>
+    <div class="panel"><div class="panel-title">👀 评论预览</div><div id="commentPreview" class="preview-box"><p style="color:#999;text-align:center;padding:40px 20px;">👆 输入评论后点击"生成预览"</p></div></div>
+</div>
+
+<div class="recommendation-section">
+    <div class="rec-title">📰 文章推荐模块生成器</div>
+    <div class="rec-content">
+        <div class="rec-input-area">
+            <div><label>推荐类型</label><select id="recType"><option value="hot">🔥 本周热读</option><option value="focus">📈 近期关注</option><option value="related">🔗 相关阅读</option></select></div>
+            <div><label>文章列表 (每行一篇标题)</label><textarea id="recArticles" placeholder="每行输入一篇文章标题"></textarea><div style="font-size:12px;color:#999;margin-top:5px;">每行一篇,最多10篇</div></div>
+            <div class="rec-buttons">
+                <button class="btn btn-primary" onclick="generateRecommendation()">✨ 生成推荐模块</button>
+                <button class="btn btn-secondary" onclick="clearRecommendation()">🗑️ 一键清空</button>
+            </div>
+        </div>
+        <div class="rec-preview-area">
+            <div class="rec-preview-title">📱 微信预览效果</div>
+            <div class="rec-preview-box" id="recPreview"><p style="color:#999;text-align:center;">点击"生成推荐模块"按钮查看效果</p></div>
+            <button class="btn btn-success" style="width:100%;margin-top:15px;" onclick="copyRecommendation()">📎 一键复制</button>
+        </div>
+    </div>
+</div>
+<div class="copy-toast" id="copyToast">✅ 已复制到剪贴板!</div>
+</div><!-- end mainApp -->
+<script>
+// ===== 密码验证 =====
+// 默认密码: ola2025
+const PASSWORD_HASH = 'feec3219ad65de9a1f76bf64276ad9795bacbe4b4a86398c0d5b3084637abb28';
+
+async function hashPassword(pwd) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function checkPassword() {
+    const input = document.getElementById('pwdInput').value;
+    if (!input) { document.getElementById('lockErr').textContent = '请输入密码'; return; }
+    const hash = await hashPassword(input);
+    if (hash === PASSWORD_HASH) {
+        document.getElementById('lockScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        updateCurrentValues(); updateTypePreview();
+        document.getElementById('recArticles').value = '1\n2\n3';
+        generateRecommendation();
+    } else {
+        document.getElementById('lockErr').textContent = '❌ 密码错误，请重试';
+        document.getElementById('pwdInput').value = '';
+        document.getElementById('pwdInput').focus();
+    }
+}
+
+// ===== 原版功能 =====
+let currentParams = {};
+const commentTypes = {
+    observation:{emoji:'🔍',title:'Olá观察',param:'observation',cssClass:'type-observation'},
+    reminder:   {emoji:'❗',title:'Olá提醒',param:'reminder',   cssClass:'type-reminder'},
+    tips:       {emoji:'📝',title:'Olá小贴士',param:'tips',     cssClass:'type-tips'},
+    data:       {emoji:'📊',title:'Olá数据',param:'data',       cssClass:'type-data'},
+    resource:   {emoji:'🔗',title:'Olá资源',param:'resource',   cssClass:'type-resource'},
+    link:       {emoji:'🌐',title:'Olá链接',param:'link',       cssClass:'type-link'}
+};
+function updateTypePreview(){
+    const type=document.getElementById('commentType').value;
+    const preview=document.getElementById('typePreview');
+    const config=commentTypes[type];
+    Object.values(commentTypes).forEach(t=>preview.classList.remove(t.cssClass));
+    preview.classList.add(config.cssClass);
+    preview.textContent=config.emoji+' '+config.title;
+}
+function updateCurrentValues(){
+    currentParams={
+        title:{size:parseInt(document.getElementById('titleSize').value),color:document.getElementById('titleColor').value,lineHeight:parseFloat(document.getElementById('titleLineHeight').value),letterSpacing:parseFloat(document.getElementById('titleLetterSpacing').value)},
+        body:{size:parseInt(document.getElementById('bodySize').value),color:document.getElementById('bodyColor').value,align:document.getElementById('bodyAlign').value,lineHeight:parseFloat(document.getElementById('bodyLineHeight').value),letterSpacing:parseFloat(document.getElementById('bodyLetterSpacing').value),paragraphSpacing:parseInt(document.getElementById('paragraphSpacing').value)},
+        observation:{contentSize:parseInt(document.getElementById('obsContentSize').value),bgColor:document.getElementById('obsColor').value,borderColor:document.getElementById('obsBorder').value,titleColor:document.getElementById('obsTitleColor').value},
+        reminder:   {contentSize:parseInt(document.getElementById('remContentSize').value),bgColor:document.getElementById('remColor').value,borderColor:document.getElementById('remBorder').value,titleColor:document.getElementById('remTitleColor').value},
+        tips:       {contentSize:parseInt(document.getElementById('tipsContentSize').value),bgColor:document.getElementById('tipsColor').value,borderColor:document.getElementById('tipsBorder').value,titleColor:document.getElementById('tipsTitleColor').value},
+        data:       {contentSize:parseInt(document.getElementById('dataContentSize').value),bgColor:document.getElementById('dataColor').value,borderColor:document.getElementById('dataBorder').value,titleColor:document.getElementById('dataTitleColor').value},
+        resource:   {contentSize:parseInt(document.getElementById('resourceContentSize').value),bgColor:document.getElementById('resourceColor').value,borderColor:document.getElementById('resourceBorder').value,titleColor:document.getElementById('resourceTitleColor').value},
+        link:       {contentSize:parseInt(document.getElementById('linkContentSize').value),bgColor:document.getElementById('linkColor').value,borderColor:document.getElementById('linkBorder').value,titleColor:document.getElementById('linkTitleColor').value}
+    };
+}
+function generateBodyPreview(){
+    updateCurrentValues();
+    const sourceUrl=document.getElementById('title').value.trim();
+    const content=document.getElementById('content').value.trim();
+    if(!content){document.getElementById('bodyPreview').innerHTML='<p style="color:#999;text-align:center;padding:40px 20px;">请输入正文内容</p>';return;}
+    document.getElementById('bodyPreview').innerHTML=formatContent(content,currentParams)+buildDisclaimer(sourceUrl);
+}
+function buildDisclaimer(url){
+    const base='font-size:12px;color:#999999;font-style:italic;line-height:1.6;';
+    if(url)return'<p style="'+base+'margin:24px 0 0 0;padding:10px 0 0 0;border-top:1px solid #eeeeee;">原文链接：'+escapeHtml(url)+'</p><p style="'+base+'margin:5px 0 0 0;padding:0 0 10px 0;border-bottom:1px solid #eeeeee;">免责声明：本文内容编译自葡萄牙主流媒体，仅供参考，本公众号不承担由内容真实性及合法性引起的任何法律责任。版权归原媒体所有，如有侵权请联系葡村Olá。</p>';
+    return'<p style="'+base+'margin:24px 0 0 0;padding:10px 0 10px 0;border-top:1px solid #eeeeee;border-bottom:1px solid #eeeeee;">免责声明：本文内容编译自葡萄牙主流媒体，仅供参考，本公众号不承担由内容真实性及合法性引起的任何法律责任。版权归原媒体所有，如有侵权请联系葡村Olá。</p>';
+}
+function generateCommentPreview(){
+    updateCurrentValues();
+    const ct=document.getElementById('commentType').value;
+    const cc=document.getElementById('commentContent').value.trim();
+    if(!cc){document.getElementById('commentPreview').innerHTML='<p style="color:#999;text-align:center;padding:40px 20px;">请输入评论内容</p>';return;}
+    document.getElementById('commentPreview').innerHTML=formatCommentBox(ct,cc,currentParams);
+}
+function formatCommentBox(type,content,params){
+    const config=commentTypes[type];
+    const bp=params[config.param];
+    const paragraphs=content.split('\n').filter(p=>p.trim());
+    let pc='';
+    paragraphs.forEach((para,i)=>{
+        para=para.trim();
+        if(para){const mb=i<paragraphs.length-1?'10px':'0';pc+='<p style="margin:0 0 '+mb+' 0;padding:0;">'+processInline(para,params)+'</p>';}
+    });
+    return'<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:20px 0;border-collapse:collapse;"><tbody><tr><td bgcolor="'+bp.bgColor+'" style="background-color:'+bp.bgColor+';border-left:4px solid '+bp.borderColor+';padding:15px 20px;font-size:'+bp.contentSize+'px;"><p style="font-size:'+params.body.size+'px;font-weight:bold;color:'+bp.titleColor+';margin:0;padding:0;line-height:1.5;">'+config.emoji+' '+config.title+'</p><div style="font-size:'+bp.contentSize+'px;color:'+params.body.color+';line-height:'+params.body.lineHeight+';letter-spacing:'+params.body.letterSpacing+'px;text-align:'+params.body.align+';"><span style="font-size:'+bp.contentSize+'px;">'+pc+'</span></div></td></tr></tbody></table>';
+}
+function formatContent(text,params){
+    let html='';
+    const blocks=text.split(/\n\n+/);
+    for(let block of blocks){
+        block=block.trim();if(!block)continue;
+        const lines=block.split('\n');
+        if(lines[0].trim().match(/^[·\-•]\s/)){
+            html+='<ul style="margin-top:15px;margin-bottom:15px;padding-left:20px;">';
+            for(let line of lines){line=line.trim();if(line.match(/^[·\-•]\s/)){html+='<li style="margin-bottom:10px;color:'+params.body.color+';line-height:'+params.body.lineHeight+';font-size:'+params.body.size+'px;letter-spacing:'+params.body.letterSpacing+'px;">'+processInline(line.replace(/^[·\-•]\s/,''),params)+'</li>';}}
+            html+='</ul>';
+        }else{
+            for(let para of block.split('\n').filter(p=>p.trim())){
+                para=para.trim();if(!para)continue;
+                const isSub=para.length<=20&&!para.match(/[。？！.?!]$/);
+                if(isSub)html+='<section style="margin-bottom:'+params.body.paragraphSpacing+'px;"><p style="font-size:'+params.body.size+'px;color:#000000;line-height:'+params.body.lineHeight+';letter-spacing:'+params.body.letterSpacing+'px;text-align:'+params.body.align+';margin:0;padding:0;font-weight:bold;">'+escapeHtml(para)+'</p></section>';
+                else html+='<section style="margin-bottom:'+params.body.paragraphSpacing+'px;"><p style="font-size:'+params.body.size+'px;color:'+params.body.color+';line-height:'+params.body.lineHeight+';letter-spacing:'+params.body.letterSpacing+'px;text-align:'+params.body.align+';margin:0;padding:0;">'+processInline(para,params)+'</p></section>';
+            }
+        }
+    }
+    return html;
+}
+function processInline(text,params){
+    text=escapeHtml(text);
+    text=text.replace(/\*\*(.*?)\*\*/g,'<strong style="color:#000000;font-weight:600;">$1</strong>');
+    text=text.replace(/\n/g,'<br>');
+    return text;
+}
+function escapeHtml(text){const div=document.createElement('div');div.textContent=text;return div.innerHTML;}
+function copySourceName(btn,name){
+    navigator.clipboard.writeText(name).then(()=>{
+        const orig=btn.textContent;btn.textContent='✅ 已复制';btn.style.background='#4CAF50';btn.style.color='#fff';
+        setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.color='';},1500);
+    });
+}
+function copyBody(){
+    updateCurrentValues();
+    const c=document.getElementById('content').value.trim();
+    if(!c){alert('正文为空，无法复制');return;}
+    copyHtmlToClipboard(formatContent(c,currentParams)+buildDisclaimer(document.getElementById('title').value.trim()));
+}
+function copyComments(){
+    updateCurrentValues();
+    const ct=document.getElementById('commentType').value;
+    const cc=document.getElementById('commentContent').value.trim();
+    if(!cc){alert('评论内容为空，无法复制');return;}
+    copyHtmlToClipboard(formatCommentBox(ct,cc,currentParams));
+}
+function copyHtmlToClipboard(html){
+    const temp=document.createElement('div');temp.innerHTML=html;temp.style.position='absolute';temp.style.left='-9999px';document.body.appendChild(temp);
+    const range=document.createRange();range.selectNodeContents(temp);
+    const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+    try{document.execCommand('copy');showToast();}catch(e){alert('复制失败，请手动选择复制');}
+    document.body.removeChild(temp);sel.removeAllRanges();
+}
+function showToast(){const t=document.getElementById('copyToast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+function clearBody(){if(confirm('确定清空正文内容？')){document.getElementById('title').value='';document.getElementById('content').value='';document.getElementById('bodyPreview').innerHTML='<p style="color:#999;text-align:center;padding:40px 20px;">👆 输入正文后点击"生成预览"</p>';}}
+function clearComments(){if(confirm('确定清空评论内容？')){document.getElementById('commentContent').value='';document.getElementById('commentPreview').innerHTML='<p style="color:#999;text-align:center;padding:40px 20px;">👆 输入评论后点击"生成预览"</p>';}}
+function resetFormat(){
+    if(confirm('确定恢复默认格式参数？')){
+        document.getElementById('titleSize').value=20;document.getElementById('titleColor').value='#000000';document.getElementById('titleLineHeight').value=1.6;document.getElementById('titleLetterSpacing').value=1;
+        document.getElementById('bodySize').value=16;document.getElementById('bodyColor').value='#333333';document.getElementById('bodyAlign').value='justify';document.getElementById('bodyLineHeight').value=1.8;document.getElementById('bodyLetterSpacing').value=1;document.getElementById('paragraphSpacing').value=15;
+        document.getElementById('obsContentSize').value=15;document.getElementById('obsColor').value='#FFF9DB';document.getElementById('obsBorder').value='#FF9800';document.getElementById('obsTitleColor').value='#FF9800';
+        document.getElementById('remContentSize').value=15;document.getElementById('remColor').value='#FFE8E8';document.getElementById('remBorder').value='#FF5252';document.getElementById('remTitleColor').value='#FF5252';
+        document.getElementById('tipsContentSize').value=15;document.getElementById('tipsColor').value='#E8F4FD';document.getElementById('tipsBorder').value='#2196F3';document.getElementById('tipsTitleColor').value='#2196F3';
+        document.getElementById('dataContentSize').value=15;document.getElementById('dataColor').value='#F5F5F5';document.getElementById('dataBorder').value='#757575';document.getElementById('dataTitleColor').value='#757575';
+        document.getElementById('resourceContentSize').value=15;document.getElementById('resourceColor').value='#F3E5F5';document.getElementById('resourceBorder').value='#9C27B0';document.getElementById('resourceTitleColor').value='#9C27B0';
+        document.getElementById('linkContentSize').value=15;document.getElementById('linkColor').value='#E8F5E9';document.getElementById('linkBorder').value='#4CAF50';document.getElementById('linkTitleColor').value='#4CAF50';
+        updateCurrentValues();alert('已恢复默认格式！');
+    }
+}
+let generatedRecHTML='';
+function generateRecommendation(){
+    const recType=document.getElementById('recType').value;
+    const articlesText=document.getElementById('recArticles').value.trim();
+    if(!articlesText){alert('请输入至少一篇文章标题');return;}
+    const articlesList=articlesText.split('\n').map(l=>l.trim()).filter(l=>l.length>0).slice(0,10);
+    if(!articlesList.length){alert('请输入至少一篇文章标题');return;}
+    const recTypeInfo={hot:{emoji:'🔥',title:'本周热读',color:'#B0C4DE'},focus:{emoji:'📈',title:'近期关注',color:'#B0C4DE'},related:{emoji:'🔗',title:'相关阅读',color:'#B0C4DE'}};
+    const info=recTypeInfo[recType];
+    let html='<table cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:'+info.color+';margin:3px 0 20px 0;border-radius:8px;"><tbody><tr><td style="padding:2px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#ffffff;border-radius:6px;"><tbody><tr><td style="padding:5px 20px;border-bottom:1px solid '+info.color+';"><p style="margin:0;padding:0;"><span style="font-size:20px;display:inline-block;vertical-align:middle;">'+info.emoji+'</span><span style="font-size:16px;font-weight:bold;color:#333;display:inline-block;vertical-align:middle;margin-left:8px;">'+info.title+'</span></p></td></tr><tr><td style="padding:15px 20px 20px 20px;">';
+    articlesList.forEach(title=>{html+='<p style="margin:0;padding:0;color:#333;font-size:15px;line-height:1.6;">'+title+'</p>';});
+    html+='</td></tr></tbody></table></td></tr></tbody></table>';
+    generatedRecHTML=html;
+    document.getElementById('recPreview').innerHTML=html;
+}
+function copyRecommendation(){
+    if(!generatedRecHTML){alert('请先生成推荐模块');return;}
+    const previewBox=document.getElementById('recPreview');
+    const range=document.createRange();range.selectNodeContents(previewBox);
+    const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+    try{document.execCommand('copy');sel.removeAllRanges();showToast();}catch(e){alert('复制失败,请手动选中后复制');}
+}
+function clearRecommendation(){document.getElementById('recArticles').value='';document.getElementById('recPreview').innerHTML='<p style="color:#999;text-align:center;">点击"生成推荐模块"按钮查看效果</p>';generatedRecHTML='';}
+</script>
+</body>
+</html>
